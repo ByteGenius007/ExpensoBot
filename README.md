@@ -35,7 +35,7 @@
 
 1. Склонируй репозиторий:
    ```
-   git clone https://github.com/твой_ник/имя_репозитория.git
+   git clone https://github.com/ByteGenius007/ExpensoBot.git
    ```
 
 2. Установи зависимости:

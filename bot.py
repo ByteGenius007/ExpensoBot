@@ -1,5 +1,3 @@
-# bot.py
-
 import telebot
 from config import BOT_TOKEN
 from logic import ExpenseManager

@@ -2,6 +2,7 @@ import telebot
 from config import BOT_TOKEN
 from logic import ExpenseManager
 from datetime import datetime
+from telebot import types
 
 bot = telebot.TeleBot(BOT_TOKEN)
 manager = ExpenseManager()
@@ -9,31 +10,49 @@ manager = ExpenseManager()
 # Команда /start
 @bot.message_handler(commands=['start'])
 def start_handler(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    btn1 = types.KeyboardButton("/add")
+    btn2 = types.KeyboardButton("/list")
+    btn3 = types.KeyboardButton("/delete")
+    btn4 = types.KeyboardButton("/filter")
+    btn5 = types.KeyboardButton("/stats")
+    btn6 = types.KeyboardButton("/week")
+    btn7 = types.KeyboardButton("/month")
+    btn8 = types.KeyboardButton("/chart")
+    btn9 = types.KeyboardButton("/help")
+    markup.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9)
+
     bot.send_message(message.chat.id,
-        "Привет! Я бот для учёта расходов.\n\n"
-        "Команды:\n"
+        "Привет! Я бот для учёта расходов 💸\n\n"
+        "Нажимай на кнопки или пиши команды!\n"
+        "Вот что я умею:\n"
         "/add — добавить трату\n"
         "/list — список всех трат\n"
         "/delete — удалить трату по ID\n"
+        "/filter — фильтр по категории\n"
         "/stats — статистика по категориям\n"
         "/week — траты за неделю\n"
         "/month — траты за месяц\n"
-        "/help — помощь по использованию"
+        "/chart — график расходов по дням\n"
+        "/help — помощь по использованию",
+        reply_markup=markup
     )
 
 # Команда /help
 @bot.message_handler(commands=['help'])
 def help_handler(message):
     bot.send_message(message.chat.id,
-        "Я бот для учёта твоих расходов.\n\n"
-        "Вот список команд:\n"
+        "Вот как пользоваться мной 📌\n\n"
         "/add — добавляет новую трату. Напиши категорию и сумму (например: еда 500).\n"
-        "/list — показывает все твои траты с временем и датой.\n"
-        "/delete — удаляет трату. Напиши ID нужной траты для удаления.\n"
-        "/stats — выводит статистику по категориям расходов (сколько в сумме потрачено по каждой категории).\n"
-        "/week — показывает траты за последние 7 дней и общую сумму.\n"
-        "/month — показывает траты за текущий месяц и общую сумму.\n"
+        "/list — показывает все твои траты с датой и временем.\n"
+        "/delete — удаляет трату. Напиши ID после списка.\n"
+        "/filter — напиши категорию, и я покажу все траты по ней.\n"
+        "/stats — покажу статистику по категориям (например: еда — 2000 тг).\n"
+        "/week — покажу все расходы за последние 7 дней и их сумму.\n"
+        "/month — расходы за этот месяц + сумма.\n"
+        "/chart — пришлю график расходов по дням.\n"
     )
+
 
 # Команда /add
 @bot.message_handler(commands=['add'])
@@ -129,5 +148,34 @@ def month_handler(message):
     text += f"\nОбщая сумма: {total_month} тг"
     bot.send_message(message.chat.id, text)
 
-bot.polling()
+@bot.message_handler(commands=['filter'])
+def filter_handler(message):
+    bot.send_message(message.chat.id, "Напиши категорию, по которой хочешь отфильтровать расходы:")
+    bot.register_next_step_handler(message, show_filtered)
 
+def show_filtered(message):
+    category = message.text.strip().lower()
+    data = manager.get_expenses_by_category(message.from_user.id, category)
+    if not data:
+        bot.send_message(message.chat.id, f"Нет трат по категории '{category}'.")
+        return
+    text = f"Расходы по категории '{category}':\n"
+    total = 0
+    for _, amt, date, time in data:
+        total += amt
+        text += f"{date} {time} — {amt} тг\n"
+    text += f"\nВсего потрачено: {total} тг"
+    bot.send_message(message.chat.id, text)
+
+@bot.message_handler(commands=['chart'])
+def chart_handler(message):
+    path = manager.generate_daily_chart(message.from_user.id)
+    if not path:
+        bot.send_message(message.chat.id, "Нет данных для построения графика.")
+        return
+    with open(path, 'rb') as photo:
+        bot.send_photo(message.chat.id, photo)
+
+
+
+bot.polling()
